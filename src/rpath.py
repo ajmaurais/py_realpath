@@ -1,4 +1,3 @@
-
 import os.path
 import argparse
 
@@ -22,6 +21,12 @@ def main():
         default = ARG_E_WARN,
         help='How to handle non-existing files: '
     )
+    # Add enquote flag
+    parser.add_argument(
+        "-q", "--enquote",
+        action="store_true",
+        help="Surround printed resolved paths with double quotes"
+    )
 
     #read and check user suplied arguments
     parser = parser.parse_args()
@@ -33,18 +38,18 @@ def main():
         fileExists = os.path.isfile(rpath) or os.path.isdir(rpath)
 
         if fileExists:
-            print(rpath)
+            print(f'"{rpath}"' if parser.enquote else rpath)
         else:
             if parser.e == ARG_E_IGNORE_SKIP:
                 continue
             elif parser.e == ARG_E_IGNORE:
-                print(rpath)
+                print(f'"{rpath}"' if parser.enquote else rpath)
             elif parser.e == ARG_E_EXIT_SILENT:
                 exit()
             elif parser.e == ARG_E_WARN or parser.e == ARG_E_EXIT:
                 print(fname + " does not exist!")
                 if parser.e == ARG_E_WARN:
-                    print(rpath)
+                    print(f'"{rpath}"' if parser.enquote else rpath)
                 elif parser.e == ARG_E_EXIT:
                     exit()
 
