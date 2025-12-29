@@ -2,6 +2,9 @@
 import os.path
 import argparse
 import sys
+import shutil
+import subprocess
+import platform
 
 ARG_E_IGNORE = "ignore"
 ARG_E_IGNORE_SKIP = "ignoreSkip"
@@ -12,6 +15,14 @@ ARG_E_EXIT_SILENT = "exitSilent"
 # Helper for formatting file names for stdout/stderr
 def _format_name(p: str, enquote: bool) -> str:
     return f'"{p}"' if enquote else p
+
+# Copy text to system clipboard on MacOS if pbcopy exists
+def _to_clipboard(text: str) -> None:
+    if platform.system() == "Darwin" and shutil.which("pbcopy"):
+        try:
+            subprocess.run(["pbcopy"], input=text, text=True, check=False)
+        except Exception:
+            pass
 
 # Parse field separator like awk -F: accept any string and honor C-style escapes (e.g., \t, \n)
 def _parse_field_separator(val: str) -> str:
@@ -47,6 +58,7 @@ def main():
     sep = _parse_field_separator(parser.fs)
 
     printed_any = False
+    outputs = []
 
     for fname in parser.file:
         #get real path
@@ -59,20 +71,28 @@ def main():
             if printed_any:
                 print(sep, end="")
             print(out, end="")
+            outputs.append(out)
             printed_any = True
+
         else:
             if parser.e == ARG_E_IGNORE_SKIP:
                 continue
+
             elif parser.e == ARG_E_IGNORE:
                 out = _format_name(rpath, parser.enquote)
                 if printed_any:
                     print(sep, end="")
                 print(out, end="")
+                outputs.append(out)
                 printed_any = True
+
             elif parser.e == ARG_E_EXIT_SILENT:
                 if printed_any:
                     print()
+                content = sep.join(outputs) + ("\n" if printed_any else "")
+                _to_clipboard(content)
                 exit()
+
             elif parser.e == ARG_E_WARN or parser.e == ARG_E_EXIT:
                 print(_format_name(fname, parser.enquote) + " does not exist!", file=sys.stderr)
                 if parser.e == ARG_E_WARN:
@@ -80,14 +100,21 @@ def main():
                     if printed_any:
                         print(sep, end="")
                     print(out, end="")
+                    outputs.append(out)
                     printed_any = True
+
                 elif parser.e == ARG_E_EXIT:
                     if printed_any:
                         print()
+                    content = sep.join(outputs) + ("\n" if printed_any else "")
+                    _to_clipboard(content)
                     exit()
 
     if printed_any:
         print()
+    content = sep.join(outputs) + ("\n" if printed_any else "")
+    _to_clipboard(content)
+
 
 if __name__ == '__main__':
     main()
