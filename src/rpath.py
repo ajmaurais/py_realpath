@@ -1,11 +1,24 @@
+
 import os.path
 import argparse
+import sys
 
 ARG_E_IGNORE = "ignore"
 ARG_E_IGNORE_SKIP = "ignoreSkip"
 ARG_E_WARN = "warn"
 ARG_E_EXIT = "exit"
 ARG_E_EXIT_SILENT = "exitSilent"
+
+# Helper for formatting file names for stdout/stderr
+def _format_name(p: str, enquote: bool) -> str:
+    return f'"{p}"' if enquote else p
+
+# Parse field separator like awk -F: accept any string and honor C-style escapes (e.g., \t, \n)
+def _parse_field_separator(val: str) -> str:
+    try:
+        return bytes(val, "utf-8").decode("unicode_escape")
+    except Exception:
+        return val
 
 def main():
     parser = argparse.ArgumentParser(description = "Resolve relative file paths to absolute file path.")
@@ -14,22 +27,26 @@ def main():
         "file", nargs = "+",
         help = "File(s) to get path of"
     )
-
     parser.add_argument(
         "-e",
         choices = [ARG_E_IGNORE, ARG_E_IGNORE_SKIP, ARG_E_WARN, ARG_E_EXIT, ARG_E_EXIT_SILENT],
         default = ARG_E_WARN,
         help='How to handle non-existing files: '
     )
-    # Add enquote flag
     parser.add_argument(
-        "-q", "--enquote",
-        action="store_true",
-        help="Surround printed resolved paths with double quotes"
+        "-q", "--enquote", action="store_true",
+        help="Surround printed resolved paths with quotes"
     )
-
-    #read and check user suplied arguments
+    parser.add_argument(
+        "-F", dest="fs", metavar="sep", default=" ",
+        help="Output field separator"
+    )
     parser = parser.parse_args()
+
+    # Resolve field separator
+    sep = _parse_field_separator(parser.fs)
+
+    printed_any = False
 
     for fname in parser.file:
         #get real path
@@ -38,20 +55,39 @@ def main():
         fileExists = os.path.isfile(rpath) or os.path.isdir(rpath)
 
         if fileExists:
-            print(f'"{rpath}"' if parser.enquote else rpath)
+            out = _format_name(rpath, parser.enquote)
+            if printed_any:
+                print(sep, end="")
+            print(out, end="")
+            printed_any = True
         else:
             if parser.e == ARG_E_IGNORE_SKIP:
                 continue
             elif parser.e == ARG_E_IGNORE:
-                print(f'"{rpath}"' if parser.enquote else rpath)
+                out = _format_name(rpath, parser.enquote)
+                if printed_any:
+                    print(sep, end="")
+                print(out, end="")
+                printed_any = True
             elif parser.e == ARG_E_EXIT_SILENT:
+                if printed_any:
+                    print()
                 exit()
             elif parser.e == ARG_E_WARN or parser.e == ARG_E_EXIT:
-                print(fname + " does not exist!")
+                print(_format_name(fname, parser.enquote) + " does not exist!", file=sys.stderr)
                 if parser.e == ARG_E_WARN:
-                    print(f'"{rpath}"' if parser.enquote else rpath)
+                    out = _format_name(rpath, parser.enquote)
+                    if printed_any:
+                        print(sep, end="")
+                    print(out, end="")
+                    printed_any = True
                 elif parser.e == ARG_E_EXIT:
+                    if printed_any:
+                        print()
                     exit()
+
+    if printed_any:
+        print()
 
 if __name__ == '__main__':
     main()
