@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "py-realpath"
+version = "0.1.0"
+description = "Resolve relative paths to absolute paths via the 'rpath' CLI."
+requires-python = ">=3.8"
+
+[project.scripts]
+rpath = "rpath:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+py-modules = ["rpath"]
