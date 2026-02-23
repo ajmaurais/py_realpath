@@ -16,11 +16,16 @@ ARG_E_EXIT_SILENT = "exitSilent"
 def _format_name(p: str, enquote: bool) -> str:
     return f'"{p}"' if enquote else p
 
-# Copy text to system clipboard on MacOS if pbcopy exists
+# Copy text to system clipboard
 def _to_clipboard(text: str) -> None:
     if platform.system() == "Darwin" and shutil.which("pbcopy"):
         try:
-            subprocess.run(["pbcopy"], input=text, text=True, check=False)
+            subprocess.run(["pbcopy"], input=text.srip(), text=True, check=False)
+        except Exception:
+            pass
+    elif platform.system() == "Linux" and os.environ.get("TMUX") and shutil.which("tmux"):
+        try:
+            subprocess.run(["tmux", "load-buffer", "-"], input=text.strip(), text=True, check=False)
         except Exception:
             pass
 
